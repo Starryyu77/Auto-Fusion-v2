@@ -1,0 +1,66 @@
+# AutoFusion 2.0 - GPU43 Cluster Configuration
+# Location: /usr1/home/s125mdg43_10/AutoFusion_v2/
+# SSH: s125mdg43_10@gpu43.dynip.ntu.edu.sg
+
+cluster:
+  name: "NTU_GPU43"
+  host: "gpu43.dynip.ntu.edu.sg"
+  user: "s125mdg43_10"
+  project_path: "/usr1/home/s125mdg43_10/AutoFusion_v2"
+  data_path: "/usr1/home/s125mdg43_10/data"
+
+hardware:
+  gpus: 4
+  gpu_type: "NVIDIA RTX A5000 (24GB)"
+  cuda_version: "11.8"
+  available_gpus: [0, 1, 2, 3]
+
+environment:
+  python: "3.10"
+  conda_env: "autofusion2"
+
+# Unified API Key for Aliyun Bailian
+api:
+  provider: "aliyun"
+  base_url: "https://dashscope.aliyuncs.com/api/v1"
+  api_key: "sk-fa81e2c1077c4bf5a159c2ca5ddcf200"
+
+  # Models to test (as requested - all 4 models)
+  models:
+    - name: "kimi-k2.5"
+      alias: "Kimi"
+      priority: 1
+
+    - name: "glm-5"
+      alias: "GLM"
+      priority: 2
+
+    - name: "qwen-max"
+      alias: "Qwen"
+      priority: 3
+
+    - name: "deepseek-v3"
+      alias: "DeepSeek"
+      priority: 4
+
+# Experiment execution mode: SERIAL (one at a time)
+execution:
+  mode: "serial"
+  parallel_scenarios: false
+  parallel_models: false
+  max_concurrent: 1
+
+# Resource allocation per experiment
+resources:
+  per_experiment:
+    gpus: 1
+    cpu_cores: 4
+    memory: "16G"
+    max_hours: 12
+
+# Logging
+logging:
+  level: "INFO"
+  log_dir: "./logs"
+  checkpoint_interval: 10
+  save_best_only: false
