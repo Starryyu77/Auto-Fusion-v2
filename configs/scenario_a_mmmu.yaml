@@ -1,0 +1,61 @@
+# AutoFusion 2.0 Configuration
+# Scenario A: High-Dimensional Image-Text Reasoning (MMMU)
+
+experiment:
+  name: "autofusion2_mmmu"
+  version: "2.0.0"
+  scenario: "high_dim_reasoning"
+  description: "High-dimensional multimodal reasoning on MMMU dataset"
+
+data:
+  data_dir: "./data/mmmu"
+  annotations_file: null  # Auto-detect
+  vision_backbone: "clip-vit-l-14"
+  text_backbone: "clip-text-l"
+
+llm:
+  backend: "aliyun"  # or "deepseek"
+  model: "kimi-k2.5"  # or "glm-5", "qwen-max", "deepseek-v3"
+  api_key: "${ALIYUN_API_KEY}"
+  temperature: 0.7
+  max_tokens: 2048
+
+search:
+  max_iterations: 200
+  max_inner_retries: 5
+  strategy_phases:
+    explore: 0.3    # First 30%: exploration
+    exploit: 0.4    # Next 40%: exploitation
+    refine: 0.3     # Last 30%: refinement
+
+constraints:
+  max_flops: 10000000        # 10M FLOPs
+  max_params: 50000000       # 50M parameters
+  target_accuracy: 0.45      # 45% target (approaching FiLM)
+  min_accuracy: 0.25         # Minimum acceptable
+  inference_time_ms: 50      # 50ms on RTX A5000
+
+evaluator:
+  type: "proxy"              # Fast proxy evaluation
+  num_shots: 16              # Few-shot samples per class
+  num_epochs: 5              # Quick training epochs
+  batch_size: 8
+  learning_rate: 0.001
+  max_eval_time: 300         # 5 minutes max per evaluation
+
+reward:
+  weights:
+    accuracy: 1.0
+    efficiency: 0.5
+    constraint: 2.0
+  penalty_type: "exponential"
+
+output:
+  output_dir: "./results/scenario_a_mmmu"
+  save_interval: 10          # Save checkpoint every N iterations
+  save_best_only: false
+
+hardware:
+  device: "cuda"
+  gpu_ids: [0]
+  num_workers: 4

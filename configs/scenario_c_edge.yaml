@@ -1,0 +1,63 @@
+# AutoFusion 2.0 Configuration
+# Scenario C: Ultra Low-Latency Edge Robotics
+
+experiment:
+  name: "autofusion2_edge"
+  version: "2.0.0"
+  scenario: "edge_robotics"
+  description: "Ultra lightweight sensor fusion for edge robotics"
+
+data:
+  data_dir: "./data/robo_sense"
+  annotations_file: null
+  vision_backbone: "mobilenet-v3-small"  # Lightweight backbone
+  text_backbone: null                    # No text, sensor data instead
+
+llm:
+  backend: "aliyun"
+  model: "kimi-k2.5"
+  api_key: "${ALIYUN_API_KEY}"
+  temperature: 0.7
+  max_tokens: 2048
+
+search:
+  max_iterations: 150          # Fewer iterations for simpler task
+  max_inner_retries: 5
+  strategy_phases:
+    explore: 0.4               # More exploration for edge constraints
+    exploit: 0.3
+    refine: 0.3
+
+constraints:
+  max_flops: 2000000           # 2M FLOPs (extremely strict)
+  max_params: 1000000          # 1M parameters
+  target_accuracy: 0.90        # 90% target (task is relatively simple)
+  min_accuracy: 0.80
+  inference_time_ms: 10        # 10ms on Jetson Nano class device
+  power_budget_mw: 100         # 100mW power budget
+
+evaluator:
+  type: "proxy"
+  num_shots: 64                # More shots for stability
+  num_epochs: 5                # Quick training
+  batch_size: 16               # Larger batch for edge
+  learning_rate: 0.001
+  max_eval_time: 120           # 2 minutes max (fast evaluation needed)
+
+reward:
+  weights:
+    accuracy: 1.0
+    efficiency: 2.0            # Heavy weight on efficiency for edge
+    constraint: 3.0            # Strong constraint penalty
+  penalty_type: "exponential"
+
+output:
+  output_dir: "./results/scenario_c_edge"
+  save_interval: 5             # More frequent saves
+  save_best_only: true
+
+hardware:
+  device: "cuda"               # Use GPU for search
+  target_device: "jetson_nano" # Target deployment device
+  gpu_ids: [2]
+  num_workers: 2

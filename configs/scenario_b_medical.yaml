@@ -1,0 +1,61 @@
+# AutoFusion 2.0 Configuration
+# Scenario B: Medical Visual Question Answering (VQA-RAD)
+
+experiment:
+  name: "autofusion2_vqa_rad"
+  version: "2.0.0"
+  scenario: "medical_vqa"
+  description: "Medical VQA on radiology images with high precision requirements"
+
+data:
+  data_dir: "./data/vqa_rad"
+  annotations_file: null
+  vision_backbone: "clip-vit-l-14"
+  text_backbone: "clip-text-l"
+
+llm:
+  backend: "aliyun"
+  model: "kimi-k2.5"
+  api_key: "${ALIYUN_API_KEY}"
+  temperature: 0.7
+  max_tokens: 2048
+
+search:
+  max_iterations: 200
+  max_inner_retries: 5
+  strategy_phases:
+    explore: 0.2    # Less exploration, focus on accuracy
+    exploit: 0.5
+    refine: 0.3
+
+constraints:
+  max_flops: 50000000        # 50M FLOPs (relaxed for medical accuracy)
+  max_params: 100000000      # 100M parameters
+  target_accuracy: 0.80      # 80% target (high precision needed)
+  min_accuracy: 0.60
+  inference_time_ms: 200     # 200ms acceptable for medical diagnosis
+
+evaluator:
+  type: "proxy"
+  num_shots: 32              # More shots for medical domain
+  num_epochs: 10             # More epochs for convergence
+  batch_size: 8
+  learning_rate: 0.0005      # Lower LR for medical fine-tuning
+  max_eval_time: 600         # 10 minutes max
+
+reward:
+  weights:
+    accuracy: 2.0            # Heavy weight on accuracy for medical
+    efficiency: 0.3
+    constraint: 1.0
+  penalty_type: "exponential"
+
+output:
+  output_dir: "./results/scenario_b_vqa_rad"
+  save_interval: 10
+  save_best_only: false
+
+hardware:
+  device: "cuda"
+  gpu_ids: [1]
+  num_workers: 4

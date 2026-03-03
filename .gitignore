@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Experiment artifacts
+*.pt
+*.pth
+checkpoints/
+results/
+test_output/
+logs/
+.cache/
+
+# Data
+data/
+datasets/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment
+.env
+.venv/
+venv/
+
+# Large files
+*.zip
+*.tar.gz
+*.h5
+*.pkl
