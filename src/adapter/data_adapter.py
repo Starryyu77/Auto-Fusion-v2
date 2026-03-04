@@ -313,10 +313,23 @@ class AutoFusionDataset(Dataset):
             if key in ann:
                 result[key] = self._extract_other(key, ann[key])
 
-        # Label
+        # Label (handle both string and numeric labels)
         for key in ["label", "answer", "class", "category", "target"]:
             if key in ann:
-                result["label"] = torch.tensor(ann[key], dtype=torch.long)
+                label_val = ann[key]
+                # Convert string labels to integers (e.g., "A"->0, "Yes"->1)
+                if isinstance(label_val, str):
+                    # For multiple choice: A->0, B->1, C->2, D->3
+                    if label_val in ["A", "B", "C", "D"]:
+                        label_val = ord(label_val) - ord("A")
+                    elif label_val in ["Yes", "yes"]:
+                        label_val = 1
+                    elif label_val in ["No", "no"]:
+                        label_val = 0
+                    else:
+                        # Hash string to integer for other cases
+                        label_val = hash(label_val) % 10000
+                result["label"] = torch.tensor(label_val, dtype=torch.long)
                 break
 
         return result

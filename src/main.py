@@ -75,6 +75,14 @@ def parse_args():
         help='Device to use'
     )
 
+    parser.add_argument(
+        '--llm_model',
+        type=str,
+        default='kimi-k2.5',
+        choices=['kimi-k2.5', 'glm-5', 'qwen-max', 'deepseek-v3'],
+        help='LLM model to use (Aliyun Bailian)'
+    )
+
     return parser.parse_args()
 
 
@@ -171,35 +179,23 @@ def main():
     logger.info("\n[Stage 3] Initializing LLM Backend")
     logger.info("-" * 60)
 
-    # TODO: Implement actual LLM backend integration
-    # For now, use a mock
-    class MockLLMBackend:
-        def generate(self, prompt: str) -> str:
-            # This is a placeholder - integrate with actual LLM API
-            return '''```python
-import torch
-import torch.nn as nn
+    # Initialize real LLM backend (Aliyun Bailian)
+    from src.utils.llm_backend import AliyunBackend
 
-class AutoFusionLayer(nn.Module):
-    def __init__(self, input_dims):
-        super().__init__()
-        self.proj_v = nn.Linear(1024, 512)
-        self.proj_t = nn.Linear(768, 512)
-        self.fusion = nn.Linear(1024, 512)
-        self.output = nn.Linear(512, 512)
+    api_key = os.environ.get("ALIYUN_API_KEY")
+    if not api_key:
+        raise ValueError("ALIYUN_API_KEY environment variable not set")
 
-    def forward(self, visual, text):
-        v = visual.mean(dim=1)
-        t = text.mean(dim=1)
-        v = self.proj_v(v)
-        t = self.proj_t(t)
-        fused = torch.cat([v, t], dim=-1)
-        fused = self.fusion(fused)
-        return self.output(fused)
-```'''
+    # Get model from args or use default
+    model_name = getattr(args, 'llm_model', 'kimi-k2.5')
 
-    llm_backend = MockLLMBackend()
-    logger.info("✓ LLM Backend initialized (Mock)")
+    llm_backend = AliyunBackend(
+        api_key=api_key,
+        model=model_name,
+        temperature=0.7,
+        max_tokens=2048
+    )
+    logger.info(f"✓ LLM Backend initialized (Model: {model_name})")
 
     # Step 4: Dual-Loop Search
     logger.info("\n[Stage 4] Starting Dual-Loop Search")
