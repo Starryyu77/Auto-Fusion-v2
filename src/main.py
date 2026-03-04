@@ -78,8 +78,8 @@ def parse_args():
     parser.add_argument(
         '--llm_model',
         type=str,
-        default='kimi-k2.5',
-        choices=['kimi-k2.5', 'glm-5', 'qwen-max', 'deepseek-v3'],
+        default='kimi-k2-5',
+        choices=['kimi-k2-5', 'glm-4-plus', 'qwen-max', 'deepseek-v3'],
         help='LLM model to use (Aliyun Bailian)'
     )
 

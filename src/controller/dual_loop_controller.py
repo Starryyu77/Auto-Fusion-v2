@@ -177,7 +177,22 @@ class DualLoopController:
         logger.info(f"✅ Compilation succeeded after {compile_attempts} attempt(s)")
 
         # Step 3: Outer Loop - Performance evaluation
-        metrics = self.proxy_evaluator.evaluate(code)
+        try:
+            metrics = self.proxy_evaluator.evaluate(code)
+        except Exception as e:
+            logger.warning(f"⚠️ Proxy evaluation failed: {e}")
+            # Return a failed result but don't crash
+            return SearchResult(
+                iteration=iteration,
+                code=code,
+                compile_success=True,  # Code compiles but eval failed
+                compile_attempts=compile_attempts,
+                accuracy=0.0,
+                flops=0,
+                params=0,
+                reward=0.0,
+                error_message=f"Evaluation failed: {str(e)[:100]}"
+            )
 
         # Step 4: Calculate reward
         reward = self.reward_fn.calculate(

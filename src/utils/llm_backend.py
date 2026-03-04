@@ -46,7 +46,7 @@ class AliyunBackend(LLMBackend):
         model: str = "kimi-k2.5",
         temperature: float = 0.7,
         max_tokens: int = 2048,
-        base_url: str = "https://dashscope.aliyuncs.com/api/v1"
+        base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     ):
         self.api_key = api_key or os.environ.get("ALIYUN_API_KEY")
         if not self.api_key:
