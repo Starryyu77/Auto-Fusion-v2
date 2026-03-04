@@ -113,7 +113,8 @@ class ProxyEvaluator:
 
             def _get_classifier_input_dim(self, fusion_layer):
                 # Infer output dimension by running a dummy forward
-                dummy_visual = torch.randn(1, 576, 1024)
+                # Note: Using 256 to match CLIP-ViT-L/14 patch embeddings (224/14=16, 16*16=256 patches)
+                dummy_visual = torch.randn(1, 256, 1024)
                 dummy_text = torch.randn(1, 77, 768)
                 with torch.no_grad():
                     output = fusion_layer(visual=dummy_visual, text=dummy_text)
@@ -125,7 +126,8 @@ class ProxyEvaluator:
                 return logits
 
         # Create fusion layer with dummy input_dims
-        input_dims = {"visual": [576, 1024], "text": [77, 768]}
+        # Note: 256 patches for CLIP-ViT-L/14 (224x224 image / 14x14 patch = 16x16 = 256)
+        input_dims = {"visual": [256, 1024], "text": [77, 768]}
         fusion_layer = FusionLayer(input_dims)
 
         # Get number of classes from dataset

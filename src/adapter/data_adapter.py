@@ -189,9 +189,10 @@ class DynamicDataAdapter:
         # Visual features
         if "visual" in sample:
             visual_tensor = sample["visual"]
+            # Report full shape including batch dimension
             input_specs["visual"] = TensorSpec(
                 name="visual",
-                shape=["B"] + list(visual_tensor.shape[1:]),
+                shape=["B"] + list(visual_tensor.shape),
                 dtype=str(visual_tensor.dtype).replace("torch.", ""),
                 description=f"Visual features from frozen {self.vision_backbone}",
                 source="image"
@@ -200,9 +201,10 @@ class DynamicDataAdapter:
         # Text features
         if "text" in sample:
             text_tensor = sample["text"]
+            # Report full shape including batch dimension
             input_specs["text"] = TensorSpec(
                 name="text",
-                shape=["B"] + list(text_tensor.shape[1:]),
+                shape=["B"] + list(text_tensor.shape),
                 dtype=str(text_tensor.dtype).replace("torch.", ""),
                 description=f"Text features from frozen {self.text_backbone}",
                 source="text"
@@ -214,7 +216,7 @@ class DynamicDataAdapter:
                 tensor = sample[key]
                 input_specs[key] = TensorSpec(
                     name=key,
-                    shape=["B"] + list(tensor.shape[1:]),
+                    shape=["B"] + list(tensor.shape),
                     dtype=str(tensor.dtype).replace("torch.", ""),
                     description=f"{key} modality",
                     source=key
