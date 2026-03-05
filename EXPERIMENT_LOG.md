@@ -13,7 +13,7 @@
 |-----|------|------|-----|------|---------|---------|-----------|
 | 1 | MMMU | Kimi-K2.5 | 0 | ✅ 完成 | 2026-03-04 15:58 | 2026-03-04 19:14 | **0.746** |
 | 2 | MMMU | Qwen-Max | 0 | ❌ 停止 | 2026-03-05 14:08 | 2026-03-05 16:30 | 0% 编译成功率 |
-| 3 | MMMU | DeepSeek-V3 | 0 | 🔄 进行中 | 2026-03-05 16:31 | - | 0.655 (iter #1) |
+| 3 | MMMU | DeepSeek-V3 | 0 | ✅ 完成 | 2026-03-05 16:31 | 2026-03-05 18:56 | **0.831** 🏆 |
 | 4 | MMMU | GLM-5 | 0 | <待开始> | - | - | - |
 | 5 | VQA-RAD | Kimi-K2.5 | 1 | <待开始> | - | - | - |
 | 6 | VQA-RAD | DeepSeek-V3 | 1 | <待开始> | - | - | - |
@@ -93,23 +93,26 @@ Notes:
 GitHub Commit: N/A
 ```
 
-#### 实验 #3: MMMU + DeepSeek-V3
+#### 实验 #3: MMMU + DeepSeek-V3 ✅
 ```yaml
-Status: 🔄 进行中
+Status: ✅ 完成
 Start: 2026-03-05 16:31
-End: -
-Duration: -
-Iterations: 2/200
-Best Reward: 0.655 (iter #1)
-Best Accuracy: 23.44%
-Compile Success Rate: 100% (1/1)
-API Calls: ~2
-Cost: ~$0.05
+End: 2026-03-05 18:56
+Duration: 145.3 minutes
+Iterations: 200/200
+Best Reward: 0.831 🏆
+Best Accuracy: 35.94% 🏆
+Compile Success Rate: 94.0%
+API Calls: ~600
+Cost: ~$15
 Notes:
-  - 第一次迭代即编译成功！
-  - FLOPs: 2.9M，非常轻量
-  - 比 Qwen 好很多
-GitHub Commit: -
+  - 🏆 超越 Kimi-K2.5! (+11.4% Reward)
+  - 🏆 最佳准确率 35.94% (vs Kimi 28.12%)
+  - 🏆 最佳 FLOPs: 1.0M (vs Kimi 1.3M)
+  - 🏆 运行速度比 Kimi 快 25%
+  - 架构特点: 极简 MLP fusion (mean pooling + 2 layer MLP)
+  - 架构简单但极其高效
+GitHub Commit: d3eaba8
 ```
 
 ---
@@ -120,10 +123,10 @@ GitHub Commit: -
 
 | 模型 | Best Reward | Best Accuracy | FLOPs | 编译成功率 | 成本 |
 |-----|-------------|---------------|-------|-----------|------|
-| **Kimi-K2.5** | **0.746** | **28.12%** | **1.3M** | **100%** | **~$12** |
-| DeepSeek-V3 | 0.655 (iter #1) | 23.44% | 2.9M | 100% | ~$0.05 |
-| GLM-5 | - | - | - | - | - |
-| Qwen-Max | ❌ 失败 | 0% | N/A | 0% | ~$3 (浪费) |
+| **🥇 DeepSeek-V3** | **0.831** 🏆 | **35.94%** 🏆 | **1.0M** 🏆 | **94%** | **~$15** |
+| **🥈 Kimi-K2.5** | 0.746 | 28.12% | 1.3M | 100% | ~$12 |
+| 🥉 GLM-5 | - | - | - | - | - |
+| ❌ Qwen-Max | N/A | N/A | N/A | 0% | ~$3 (浪费) |
 
 ### 场景 B: VQA-RAD (医疗 VQA)
 
