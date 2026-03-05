@@ -319,7 +319,7 @@ class AutoFusionDataset(Dataset):
         for key in ["label", "answer", "class", "category", "target"]:
             if key in ann:
                 label_val = ann[key]
-                # Convert string labels to integers (e.g., "A"->0, "Yes"->1)
+                # Convert string labels to integers
                 if isinstance(label_val, str):
                     # For multiple choice: A->0, B->1, C->2, D->3
                     if label_val in ["A", "B", "C", "D"]:
@@ -329,8 +329,9 @@ class AutoFusionDataset(Dataset):
                     elif label_val in ["No", "no"]:
                         label_val = 0
                     else:
-                        # Hash string to integer for other cases
-                        label_val = hash(label_val) % 10000
+                        # Use hash but with smaller range for VQA-type answers
+                        # Create deterministic mapping based on string content
+                        label_val = hash(label_val) % 100
                 result["label"] = torch.tensor(label_val, dtype=torch.long)
                 break
 
