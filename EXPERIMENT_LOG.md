@@ -14,10 +14,10 @@
 | 1 | MMMU | Kimi-K2.5 | 0 | ✅ 完成 | 2026-03-04 15:58 | 2026-03-04 19:14 | **0.746** |
 | 2 | MMMU | Qwen-Max | 0 | ❌ 停止 | 2026-03-05 14:08 | 2026-03-05 16:30 | 0% 编译成功率 |
 | 3 | MMMU | DeepSeek-V3 | 0 | ✅ 完成 | 2026-03-05 16:31 | 2026-03-05 18:56 | **0.831** 🏆 |
-| 4 | MMMU | GLM-5 | 0 | <待开始> | - | - | - |
-| 5 | VQA-RAD | Kimi-K2.5 | 1 | <待开始> | - | - | - |
-| 6 | VQA-RAD | DeepSeek-V3 | 1 | <待开始> | - | - | - |
-| 7 | VQA-RAD | GLM-5 | 1 | <待开始> | - | - | - |
+| 4 | MMMU | GLM-5 | 0 | 🔄 运行中 | 2026-03-05 23:29 | - | 0.824 (Iter 2) |
+| 5 | VQA-RAD | Kimi-K2.5 | 1 | 🔄 运行中 | 2026-03-05 23:41 | - | - |
+| 6 | VQA-RAD | DeepSeek-V3 | 2 | 🔄 运行中 | 2026-03-05 23:41 | - | - |
+| 7 | VQA-RAD | GLM-5 | - | <待开始> | - | - | - |
 | 8 | VQA-RAD | Qwen-Max | 1 | ❌ 跳过 | - | - | 编译成功率太低 |
 
 ---
@@ -115,6 +115,56 @@ Notes:
 GitHub Commit: d3eaba8
 ```
 
+#### 实验 #4: MMMU + GLM-5 🔄
+```yaml
+Status: 🔄 运行中
+Start: 2026-03-05 23:29
+End: -
+Duration: -
+Iterations: 3/200 (进行中)
+Best Reward: 0.824 (Iter 2)
+Best Accuracy: 35.94%
+Compile Success Rate: 100%
+API Calls: ~
+Cost: ~
+Notes:
+  - 100% 编译成功率
+  - Iter 2 即达到 0.824，接近 DeepSeek-V3 的 0.831
+  - FLOPs: 1.3M
+  - 系统运行稳定
+```
+
+#### 实验 #5: VQA-RAD + Kimi-K2.5 🔄
+```yaml
+Status: 🔄 运行中
+Start: 2026-03-05 23:41
+End: -
+Duration: -
+Iterations: 2/200 (进行中)
+Best Reward: 0.000 (Iter 1)
+Best Accuracy: 0.00%
+Compile Success Rate: 100%
+Notes:
+  - 医疗 VQA 场景首次尝试
+  - GPU 1 运行中
+```
+
+#### 实验 #6: VQA-RAD + DeepSeek-V3 🔄
+```yaml
+Status: 🔄 运行中
+Start: 2026-03-05 23:41
+End: -
+Duration: -
+Iterations: 1/200 (进行中)
+Best Reward: -
+Best Accuracy: -
+Compile Success Rate: -
+Notes:
+  - 医疗 VQA 场景
+  - GPU 2 运行中
+  - 刚刚启动
+```
+
 ---
 
 ## 结果汇总
@@ -132,10 +182,10 @@ GitHub Commit: d3eaba8
 
 | 模型 | Best Reward | Best Accuracy | FLOPs | 编译成功率 | 成本 |
 |-----|-------------|---------------|-------|-----------|------|
-| Kimi-K2.5 | - | - | - | - | - |
-| GLM-5 | - | - | - | - | - |
-| Qwen-Max | - | - | - | - | - |
-| DeepSeek-V3 | - | - | - | - | - |
+| Kimi-K2.5 | 🔄 | 🔄 | 🔄 | 100% | - |
+| GLM-5 | <待开始> | <待开始> | <待开始> | - | - |
+| Qwen-Max | ❌ 跳过 | ❌ 跳过 | ❌ 跳过 | 0% | - |
+| DeepSeek-V3 | 🔄 | 🔄 | 🔄 | - | - |
 
 ### 场景 C: RoboSense (边缘机器人)
 
@@ -192,5 +242,5 @@ GitHub Commit: d3eaba8
 
 ---
 
-*最后更新: 2026-03-03*
+*最后更新: 2026-03-05*
 *下次更新: 每个实验完成后*
