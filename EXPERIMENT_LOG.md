@@ -12,19 +12,13 @@
 | 编号 | 场景 | 模型 | GPU | 状态 | 开始时间 | 完成时间 | 最佳Reward |
 |-----|------|------|-----|------|---------|---------|-----------|
 | 1 | MMMU | Kimi-K2.5 | 0 | ✅ 完成 | 2026-03-04 15:58 | 2026-03-04 19:14 | **0.746** |
-| 2 | MMMU | GLM-5 | 0 | <待开始> | - | - | - |
-| 3 | MMMU | Qwen-Max | 0 | <待开始> | - | - | - |
-| 4 | MMMU | DeepSeek-V3 | 0 | <待开始> | - | - | - |
-| 3 | MMMU | Qwen-Max | 0 | <待开始> | - | - | - |
-| 4 | MMMU | DeepSeek-V3 | 0 | <待开始> | - | - | - |
+| 2 | MMMU | Qwen-Max | 0 | ❌ 停止 | 2026-03-05 14:08 | 2026-03-05 16:30 | 0% 编译成功率 |
+| 3 | MMMU | DeepSeek-V3 | 0 | 🔄 进行中 | 2026-03-05 16:31 | - | 0.655 (iter #1) |
+| 4 | MMMU | GLM-5 | 0 | <待开始> | - | - | - |
 | 5 | VQA-RAD | Kimi-K2.5 | 1 | <待开始> | - | - | - |
-| 6 | VQA-RAD | GLM-5 | 1 | <待开始> | - | - | - |
-| 7 | VQA-RAD | Qwen-Max | 1 | <待开始> | - | - | - |
-| 8 | VQA-RAD | DeepSeek-V3 | 1 | <待开始> | - | - | - |
-| 9 | RoboSense | Kimi-K2.5 | 2 | <待开始> | - | - | - |
-| 10 | RoboSense | GLM-5 | 2 | <待开始> | - | - | - |
-| 11 | RoboSense | Qwen-Max | 2 | <待开始> | - | - | - |
-| 12 | RoboSense | DeepSeek-V3 | 2 | <待开始> | - | - | - |
+| 6 | VQA-RAD | DeepSeek-V3 | 1 | <待开始> | - | - | - |
+| 7 | VQA-RAD | GLM-5 | 1 | <待开始> | - | - | - |
+| 8 | VQA-RAD | Qwen-Max | 1 | ❌ 跳过 | - | - | 编译成功率太低 |
 
 ---
 
@@ -79,6 +73,45 @@ Notes:
 GitHub Commit: c57e620 (best_architecture.py saved locally)
 ```
 
+#### 实验 #2: MMMU + Qwen-Max
+```yaml
+Status: ❌ 已停止 (编译成功率 0%)
+Start: 2026-03-05 14:08
+End: 2026-03-05 16:30
+Duration: ~2.5h
+Iterations: 45/200 (提前停止)
+Best Reward: N/A
+Best Accuracy: N/A
+Compile Success Rate: 0% (0/45)
+API Calls: ~225 (45 iterations × 5 attempts)
+Cost: ~$3 (浪费)
+Notes:
+  - Qwen-Max 生成代码质量极差
+  - 连续 45 次迭代，0 次编译成功
+  - 每次 5 次重试后全部失败
+  - 决定停止，切换到 DeepSeek-V3
+GitHub Commit: N/A
+```
+
+#### 实验 #3: MMMU + DeepSeek-V3
+```yaml
+Status: 🔄 进行中
+Start: 2026-03-05 16:31
+End: -
+Duration: -
+Iterations: 2/200
+Best Reward: 0.655 (iter #1)
+Best Accuracy: 23.44%
+Compile Success Rate: 100% (1/1)
+API Calls: ~2
+Cost: ~$0.05
+Notes:
+  - 第一次迭代即编译成功！
+  - FLOPs: 2.9M，非常轻量
+  - 比 Qwen 好很多
+GitHub Commit: -
+```
+
 ---
 
 ## 结果汇总
@@ -88,9 +121,9 @@ GitHub Commit: c57e620 (best_architecture.py saved locally)
 | 模型 | Best Reward | Best Accuracy | FLOPs | 编译成功率 | 成本 |
 |-----|-------------|---------------|-------|-----------|------|
 | **Kimi-K2.5** | **0.746** | **28.12%** | **1.3M** | **100%** | **~$12** |
+| DeepSeek-V3 | 0.655 (iter #1) | 23.44% | 2.9M | 100% | ~$0.05 |
 | GLM-5 | - | - | - | - | - |
-| Qwen-Max | - | - | - | - | - |
-| DeepSeek-V3 | - | - | - | - | - |
+| Qwen-Max | ❌ 失败 | 0% | N/A | 0% | ~$3 (浪费) |
 
 ### 场景 B: VQA-RAD (医疗 VQA)
 
