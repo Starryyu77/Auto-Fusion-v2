@@ -11,8 +11,10 @@
 
 | 编号 | 场景 | 模型 | GPU | 状态 | 开始时间 | 完成时间 | 最佳Reward |
 |-----|------|------|-----|------|---------|---------|-----------|
-| 1 | MMMU | Kimi-K2.5 | 0 | <待开始> | - | - | - |
+| 1 | MMMU | Kimi-K2.5 | 0 | ✅ 完成 | 2026-03-04 15:58 | 2026-03-04 19:14 | **0.746** |
 | 2 | MMMU | GLM-5 | 0 | <待开始> | - | - | - |
+| 3 | MMMU | Qwen-Max | 0 | <待开始> | - | - | - |
+| 4 | MMMU | DeepSeek-V3 | 0 | <待开始> | - | - | - |
 | 3 | MMMU | Qwen-Max | 0 | <待开始> | - | - | - |
 | 4 | MMMU | DeepSeek-V3 | 0 | <待开始> | - | - | - |
 | 5 | VQA-RAD | Kimi-K2.5 | 1 | <待开始> | - | - | - |
@@ -59,19 +61,22 @@
 
 #### 实验 #1: MMMU + Kimi-K2.5
 ```yaml
-Status: <进行中/完成/失败>
-Start: 2026-XX-XX XX:XX
-End: 2026-XX-XX XX:XX
-Duration: Xh Xm
+Status: ✅ 完成
+Start: 2026-03-04 15:58
+End: 2026-03-04 19:14
+Duration: 3h 16m
 Iterations: 200/200
-Best Reward: X.XXX
-Best Accuracy: XX.X%
-Compile Success Rate: XX.X%
-API Calls: XXX
-Cost: $X.XX
+Best Reward: 0.746
+Best Accuracy: 28.12%
+Compile Success Rate: 100%
+API Calls: ~400 (200 iterations × 2 avg)
+Cost: ~$12
 Notes:
-  - <任何观察或问题>
-GitHub Commit: <hash>
+  - 100% 编译成功率，系统非常稳定
+  - 最佳架构仅 1.3M FLOPs，非常轻量
+  - Reward 在 0.746 后收敛，后期无显著提升
+  - 架构特点: Attention pooling + Cross-modal fusion
+GitHub Commit: c57e620 (best_architecture.py saved locally)
 ```
 
 ---
@@ -82,7 +87,7 @@ GitHub Commit: <hash>
 
 | 模型 | Best Reward | Best Accuracy | FLOPs | 编译成功率 | 成本 |
 |-----|-------------|---------------|-------|-----------|------|
-| Kimi-K2.5 | - | - | - | - | - |
+| **Kimi-K2.5** | **0.746** | **28.12%** | **1.3M** | **100%** | **~$12** |
 | GLM-5 | - | - | - | - | - |
 | Qwen-Max | - | - | - | - | - |
 | DeepSeek-V3 | - | - | - | - | - |
