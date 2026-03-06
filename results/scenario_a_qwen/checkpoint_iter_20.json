@@ -1,0 +1,288 @@
+{
+  "iteration": 20,
+  "history": [
+    {
+      "iteration": 1,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 75.70019173622131
+    },
+    {
+      "iteration": 2,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 201.05294609069824
+    },
+    {
+      "iteration": 3,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 207.97279357910156
+    },
+    {
+      "iteration": 4,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 147.8333716392517
+    },
+    {
+      "iteration": 5,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 113.7099347114563
+    },
+    {
+      "iteration": 6,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 191.72626185417175
+    },
+    {
+      "iteration": 7,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 193.34253883361816
+    },
+    {
+      "iteration": 8,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 233.73462080955505
+    },
+    {
+      "iteration": 9,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 108.29844331741333
+    },
+    {
+      "iteration": 10,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 199.41698360443115
+    },
+    {
+      "iteration": 11,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 153.76887392997742
+    },
+    {
+      "iteration": 12,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 206.56087636947632
+    },
+    {
+      "iteration": 13,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 183.90067076683044
+    },
+    {
+      "iteration": 14,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 109.85950255393982
+    },
+    {
+      "iteration": 15,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 241.44431495666504
+    },
+    {
+      "iteration": 16,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 163.78367066383362
+    },
+    {
+      "iteration": 17,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 210.52544331550598
+    },
+    {
+      "iteration": 18,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 269.17798805236816
+    },
+    {
+      "iteration": 19,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 235.3119032382965
+    },
+    {
+      "iteration": 20,
+      "code": "",
+      "compile_success": false,
+      "compile_attempts": 5,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Compilation failed after max retries",
+      "time_taken": 206.31256079673767
+    }
+  ],
+  "best_result": null,
+  "api_contract": {
+    "version": "1.0",
+    "input_specs": {
+      "visual": {
+        "name": "visual",
+        "shape": [
+          "B",
+          256,
+          1024
+        ],
+        "dtype": "float32",
+        "description": "Visual features from frozen clip-vit-l-14",
+        "source": "image"
+      },
+      "text": {
+        "name": "text",
+        "shape": [
+          "B",
+          77,
+          768
+        ],
+        "dtype": "float32",
+        "description": "Text features from frozen clip-text-l",
+        "source": "text"
+      }
+    },
+    "output_spec": {
+      "name": "output",
+      "shape": [
+        "B",
+        4
+      ],
+      "dtype": "float32",
+      "description": "Model output logits",
+      "source": "prediction"
+    },
+    "constraints": {
+      "max_flops": 10000000,
+      "max_params": 50000000,
+      "target_accuracy": 0.45
+    }
+  }
+}

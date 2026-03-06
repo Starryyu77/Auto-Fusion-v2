@@ -21,9 +21,9 @@ build/
 *.pt
 *.pth
 checkpoints/
-results/
+# results/  # Temporarily included for experiment records
 test_output/
-logs/
+# logs/  # Temporarily included for experiment records
 .cache/
 
 # Data

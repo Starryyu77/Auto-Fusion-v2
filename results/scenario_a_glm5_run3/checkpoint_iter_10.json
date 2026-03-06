@@ -1,0 +1,179 @@
+{
+  "iteration": 10,
+  "history": [
+    {
+      "iteration": 1,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        visual_dim = 1024\n        text_dim = 768\n        hidden_dim = 512\n        output_dim = 4\n        \n        # Attention-based pooling layers\n        self.visual_attn = nn.Linear(visual_dim, 1)\n        self.text_attn = nn.Linear(text_dim, 1)\n        \n        # Modality-specific projections\n        self.visual_proj = nn.Sequential(\n            nn.Linear(visual_dim, hidden_dim),\n            nn.LayerNorm(hidden_dim)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(text_dim, hidden_dim),\n            nn.LayerNorm(hidden_dim)\n        )\n        \n        # Cross-modal gating mechanism\n        self.gate = nn.Sequential(\n            nn.Linear(hidden_dim * 2, hidden_dim * 2),\n            nn.Sigmoid()\n        )\n        \n        # Fusion classifier\n        self.classifier = nn.Sequential(\n            nn.Linear(hidden_dim * 2, hidden_dim),\n            nn.LayerNorm(hidden_dim),\n            nn.GELU(),\n            nn.Dropout(0.1),\n            nn.Linear(hidden_dim, hidden_dim // 4),\n            nn.GELU(),\n            nn.Linear(hidden_dim // 4, output_dim)\n        )\n    \n    def attention_pool(self, x, attn_layer):\n        attn_scores = attn_layer(x)\n        attn_weights = F.softmax(attn_scores, dim=1)\n        return (x * attn_weights).sum(dim=1)\n    \n    def forward(self, visual, text):\n        # visual: [B, 256, 1024], text: [B, 77, 768]\n        \n        # Attention-weighted pooling\n        visual_pooled = self.attention_pool(visual, self.visual_attn)\n        text_pooled = self.attention_pool(text, self.text_attn)\n        \n        # Project to common dimension\n        visual_embed = self.visual_proj(visual_pooled)\n        text_embed = self.text_proj(text_pooled)\n        \n        # Concatenate and apply gating\n        concat = torch.cat([visual_embed, text_embed], dim=-1)\n        gated = concat * self.gate(concat)\n        \n        # Classification\n        output = self.classifier(gated)\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.28125,
+      "flops": 5116448,
+      "params": 2563994,
+      "reward": 0.64051883,
+      "error_message": null,
+      "time_taken": 144.50632286071777
+    },
+    {
+      "iteration": 2,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_dim = 1024\n        self.text_dim = 768\n        self.hidden_dim = 256\n        \n        # Attention pooling for each modality\n        self.visual_attn = nn.Linear(self.visual_dim, 1)\n        self.text_attn = nn.Linear(self.text_dim, 1)\n        \n        # Project to common dimension\n        self.visual_proj = nn.Sequential(\n            nn.Linear(self.visual_dim, self.hidden_dim),\n            nn.LayerNorm(self.hidden_dim),\n            nn.ReLU()\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(self.text_dim, self.hidden_dim),\n            nn.LayerNorm(self.hidden_dim),\n            nn.ReLU()\n        )\n        \n        # Cross-modal gating mechanism\n        self.gate = nn.Sequential(\n            nn.Linear(self.hidden_dim * 2, self.hidden_dim),\n            nn.Sigmoid()\n        )\n        \n        # Low-rank bilinear fusion\n        self.v_bilinear = nn.Linear(self.hidden_dim, 64, bias=False)\n        self.t_bilinear = nn.Linear(self.hidden_dim, 64, bias=False)\n        \n        # Final classifier\n        self.classifier = nn.Sequential(\n            nn.Linear(self.hidden_dim + 64, 64),\n            nn.ReLU(),\n            nn.Dropout(0.2),\n            nn.Linear(64, 4)\n        )\n        \n    def forward(self, visual, text):\n        # Attention pooling for visual features\n        v_attn = self.visual_attn(visual).softmax(dim=1)\n        visual_pooled = (visual * v_attn).sum(dim=1)\n        \n        # Attention pooling for text features\n        t_attn = self.text_attn(text).softmax(dim=1)\n        text_pooled = (text * t_attn).sum(dim=1)\n        \n        # Project to common dimension\n        v = self.visual_proj(visual_pooled)\n        t = self.text_proj(text_pooled)\n        \n        # Gated fusion\n        concat = torch.cat([v, t], dim=-1)\n        gate = self.gate(concat)\n        gated = gate * v + (1 - gate) * t\n        \n        # Low-rank bilinear fusion\n        v_b = self.v_bilinear(v)\n        t_b = self.t_bilinear(t)\n        bilinear = v_b * t_b\n        \n        # Combine gated and bilinear features\n        fused = torch.cat([gated, bilinear], dim=-1)\n        \n        # Classify\n        out = self.classifier(fused)\n        return out",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.171875,
+      "flops": 1290272,
+      "params": 647002,
+      "reward": 0.63638319,
+      "error_message": null,
+      "time_taken": 246.9504132270813
+    },
+    {
+      "iteration": 3,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        \n        # Robust dimension extraction\n        def get_dim(info, default):\n            if isinstance(info, dict):\n                if 'shape' in info:\n                    d = info['shape'][-1]\n                    return int(d) if isinstance(d, str) else d\n                elif 'dim' in info:\n                    d = info['dim']\n                    return int(d) if isinstance(d, str) else d\n                return default\n            return int(info) if not isinstance(info, int) else info\n        \n        visual_dim = get_dim(input_dims.get('visual', 1024), 1024)\n        text_dim = get_dim(input_dims.get('text', 768), 768)\n        \n        self.embed_dim = 64\n        \n        # Adaptive pooling\n        self.visual_pool = nn.AdaptiveAvgPool1d(1)\n        self.text_pool = nn.AdaptiveAvgPool1d(1)\n        \n        # Projections\n        self.visual_proj = nn.Linear(visual_dim, self.embed_dim)\n        self.text_proj = nn.Linear(text_dim, self.embed_dim)\n        \n        # Gated fusion\n        self.gate = nn.Linear(self.embed_dim * 2, self.embed_dim)\n        \n        # Classifier\n        self.classifier = nn.Sequential(\n            nn.Linear(self.embed_dim, 32),\n            nn.GELU(),\n            nn.Linear(32, 4)\n        )\n        \n    def forward(self, visual, text):\n        # Pool over sequence dimension: [B, L, D] -> [B, D, L] -> [B, D, 1] -> [B, D]\n        v = self.visual_pool(visual.transpose(1, 2)).squeeze(-1)\n        t = self.text_pool(text.transpose(1, 2)).squeeze(-1)\n        \n        # Project\n        v = self.visual_proj(v)\n        t = self.text_proj(t)\n        \n        # Gated fusion\n        concat = torch.cat([v, t], dim=-1)\n        gate = torch.sigmoid(self.gate(concat))\n        fused = gate * v + (1 - gate) * t\n        \n        return self.classifier(fused)\n\n# Alias for test compatibility\nFusionLayer = AutoFusionLayer",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Evaluation failed: int() argument must be a string, a bytes-like object or a number, not 'list'",
+      "time_taken": 323.8198127746582
+    },
+    {
+      "iteration": 4,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        # Use fixed dimensions from API contract to avoid dict parsing issues\n        visual_dim = 1024\n        text_dim = 768\n        \n        hidden_dim = 512\n        output_dim = 4\n        \n        self.visual_proj = nn.Linear(visual_dim, hidden_dim)\n        self.text_proj = nn.Linear(text_dim, hidden_dim)\n        \n        self.gate = nn.Sequential(\n            nn.Linear(hidden_dim * 2, hidden_dim),\n            nn.Tanh(),\n            nn.Linear(hidden_dim, 2),\n            nn.Softmax(dim=-1)\n        )\n        \n        self.classifier = nn.Sequential(\n            nn.Linear(hidden_dim, hidden_dim // 2),\n            nn.LayerNorm(hidden_dim // 2),\n            nn.ReLU(),\n            nn.Dropout(0.1),\n            nn.Linear(hidden_dim // 2, output_dim)\n        )\n    \n    def forward(self, visual, text):\n        # visual: [B, 256, 1024], text: [B, 77, 768]\n        visual_pooled = visual.mean(dim=1)\n        text_pooled = text.mean(dim=1)\n        \n        visual_feat = self.visual_proj(visual_pooled)\n        text_feat = self.text_proj(text_pooled)\n        \n        concat = torch.cat([visual_feat, text_feat], dim=-1)\n        gates = self.gate(concat)\n        \n        fused = gates[:, 0:1] * visual_feat + gates[:, 1:2] * text_feat\n        \n        output = self.classifier(fused)\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.25,
+      "flops": 3149856,
+      "params": 1577242,
+      "reward": 0.66336739,
+      "error_message": null,
+      "time_taken": 221.49429035186768
+    },
+    {
+      "iteration": 5,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        # Dimensions from API contract\n        # visual: [B, 256, 1024] -> feature dim 1024\n        # text: [B, 77, 768] -> feature dim 768\n        visual_dim = 1024\n        text_dim = 768\n        \n        hidden_dim = 256\n        \n        # Project to common dimension\n        self.visual_proj = nn.Linear(visual_dim, hidden_dim)\n        self.text_proj = nn.Linear(text_dim, hidden_dim)\n        \n        # Feature-wise gating mechanism\n        self.gate = nn.Linear(hidden_dim * 2, hidden_dim)\n        \n        # Low-rank bilinear fusion\n        self.bilinear_v = nn.Linear(hidden_dim, 64, bias=False)\n        self.bilinear_t = nn.Linear(hidden_dim, 64, bias=False)\n        \n        # Final classifier\n        self.classifier = nn.Sequential(\n            nn.Linear(hidden_dim + 64, 64),\n            nn.ReLU(),\n            nn.Dropout(0.2),\n            nn.Linear(64, 4)\n        )\n        \n    def forward(self, visual, text):\n        # Mean pooling over sequence dimension\n        visual_pooled = visual.mean(dim=1)  # [B, 1024]\n        text_pooled = text.mean(dim=1)  # [B, 768]\n        \n        # Project to common dimension\n        visual_feat = F.relu(self.visual_proj(visual_pooled))  # [B, 256]\n        text_feat = F.relu(self.text_proj(text_pooled))  # [B, 256]\n        \n        # Gating fusion\n        concat = torch.cat([visual_feat, text_feat], dim=-1)  # [B, 512]\n        gate = torch.sigmoid(self.gate(concat))  # [B, 256]\n        gated = gate * visual_feat + (1 - gate) * text_feat  # [B, 256]\n        \n        # Low-rank bilinear fusion\n        bilinear = self.bilinear_v(visual_feat) * self.bilinear_t(text_feat)  # [B, 64]\n        \n        # Combine gated and bilinear features\n        fused = torch.cat([gated, bilinear], dim=-1)  # [B, 320]\n        \n        output = self.classifier(fused)  # [B, 4]\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.390625,
+      "flops": 1286688,
+      "params": 644184,
+      "reward": 0.85523688,
+      "error_message": null,
+      "time_taken": 339.38856267929077
+    },
+    {
+      "iteration": 6,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        \n        # Extract dimensions properly - handle dict structure\n        visual_info = input_dims['visual']\n        text_info = input_dims['text']\n        \n        if isinstance(visual_info, dict):\n            visual_dim = visual_info['shape'][-1]\n            text_dim = text_info['shape'][-1]\n        else:\n            visual_dim = visual_info[-1]\n            text_dim = text_info[-1]\n        \n        self.hidden_dim = 128\n        \n        # Project to common dimension\n        self.v_proj = nn.Linear(visual_dim, self.hidden_dim)\n        self.t_proj = nn.Linear(text_dim, self.hidden_dim)\n        \n        # Cross-modal attention\n        self.cross_attn = nn.MultiheadAttention(\n            embed_dim=self.hidden_dim,\n            num_heads=4,\n            batch_first=True\n        )\n        \n        # Layer norms\n        self.v_norm = nn.LayerNorm(self.hidden_dim)\n        self.t_norm = nn.LayerNorm(self.hidden_dim)\n        \n        # Feature-wise gating\n        self.gate = nn.Sequential(\n            nn.Linear(self.hidden_dim * 2, self.hidden_dim),\n            nn.Sigmoid()\n        )\n        \n        # Classifier\n        self.classifier = nn.Sequential(\n            nn.Linear(self.hidden_dim, 64),\n            nn.ReLU(),\n            nn.Dropout(0.2),\n            nn.Linear(64, 4)\n        )\n    \n    def forward(self, visual, text):\n        B = visual.size(0)\n        \n        # Adaptive pooling for robustness\n        # visual: B x 256 x 1024 -> B x 16 x 1024\n        v_reduced = visual.reshape(B, 16, 16, -1).mean(dim=2)\n        \n        # text: B x 77 x 768 -> B x 10 x 768 (pad to 80, then reduce)\n        t_padded = F.pad(text, (0, 0, 0, 3))\n        t_reduced = t_padded.reshape(B, 10, 8, -1).mean(dim=2)\n        \n        # Project to common dimension\n        v = self.v_proj(v_reduced)\n        t = self.t_proj(t_reduced)\n        \n        # Layer norm\n        v = self.v_norm(v)\n        t = self.t_norm(t)\n        \n        # Cross-modal attention: text queries visual\n        attn_out, _ = self.cross_attn(t, v, v)\n        t_attended = self.t_norm(t + attn_out)\n        \n        # Global pooling\n        v_pooled = v.mean(dim=1)\n        t_pooled = t_attended.mean(dim=1)\n        \n        # Feature-wise gating\n        gate = self.gate(torch.cat([v_pooled, t_pooled], dim=-1))\n        fused = gate * v_pooled + (1 - gate) * t_pooled\n        \n        # Classify\n        out = self.classifier(fused)\n        \n        return out",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.1875,
+      "flops": 1237536,
+      "params": 337624,
+      "reward": 0.65487348,
+      "error_message": null,
+      "time_taken": 409.3051965236664
+    },
+    {
+      "iteration": 7,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        # Handle both dict and int formats for input_dims\n        visual_info = input_dims.get('visual', input_dims)\n        text_info = input_dims.get('text', input_dims)\n        \n        if isinstance(visual_info, dict):\n            visual_dim = visual_info['shape'][-1]\n            text_dim = text_info['shape'][-1]\n        else:\n            visual_dim = visual_info if not isinstance(visual_info, dict) else 1024\n            text_dim = text_info if not isinstance(text_info, dict) else 768\n        \n        self.d_model = 64\n        \n        # Project both modalities to common dimension\n        self.v_proj = nn.Linear(visual_dim, self.d_model)\n        self.t_proj = nn.Linear(text_dim, self.d_model)\n        \n        # Cross-attention: text queries visual\n        self.cross_attn = nn.MultiheadAttention(self.d_model, num_heads=4, batch_first=True)\n        \n        # Fusion layers\n        self.fusion = nn.Sequential(\n            nn.Linear(self.d_model * 3, 128),\n            nn.ReLU(),\n            nn.Dropout(0.2),\n            nn.Linear(128, 4)\n        )\n    \n    def forward(self, visual, text):\n        # Project to common dimension\n        v = self.v_proj(visual)  # B x 256 x 64\n        t = self.t_proj(text)    # B x 77 x 64\n        \n        # Cross-attention: text attends to visual\n        cross_out, _ = self.cross_attn(t, v, v)  # B x 77 x 64\n        \n        # Global pooling\n        v_pool = v.mean(dim=1)           # B x 64\n        t_pool = t.mean(dim=1)           # B x 64\n        cross_pool = cross_out.mean(dim=1)  # B x 64\n        \n        # Concatenate all representations\n        fused = torch.cat([v_pool, t_pool, cross_pool], dim=-1)  # B x 192\n        \n        return self.fusion(fused)  # B x 4",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.0,
+      "flops": 0,
+      "params": 0,
+      "reward": 0.0,
+      "error_message": "Evaluation failed: empty(): argument 'size' failed to unpack the object at pos 2 with error \"type must be tuple of ints",
+      "time_taken": 263.39518642425537
+    },
+    {
+      "iteration": 8,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        # Fixed dimensions from API contract\n        visual_dim = 1024\n        text_dim = 768\n        hidden_dim = 128\n        \n        # Project to common dimension\n        self.v_proj = nn.Linear(visual_dim, hidden_dim)\n        self.t_proj = nn.Linear(text_dim, hidden_dim)\n        \n        # Simple attention fusion\n        self.attn = nn.MultiheadAttention(hidden_dim, 4, batch_first=True)\n        \n        # Layer norms\n        self.ln_v = nn.LayerNorm(hidden_dim)\n        self.ln_t = nn.LayerNorm(hidden_dim)\n        \n        # Classifier\n        self.classifier = nn.Sequential(\n            nn.Linear(hidden_dim * 2, 64),\n            nn.ReLU(),\n            nn.Dropout(0.1),\n            nn.Linear(64, 4)\n        )\n        \n    def forward(self, visual, text):\n        # visual: [B, 256, 1024]\n        # text: [B, 77, 768]\n        \n        # Project to common dimension\n        v = self.v_proj(visual)  # [B, 256, 128]\n        t = self.t_proj(text)  # [B, 77, 128]\n        \n        # Cross-modal attention\n        v_attended, _ = self.attn(v, t, t)  # [B, 256, 128]\n        t_attended, _ = self.attn(t, v, v)  # [B, 77, 128]\n        \n        # Residual + LayerNorm\n        v_fused = self.ln_v(v + v_attended)  # [B, 256, 128]\n        t_fused = self.ln_t(t + t_attended)  # [B, 77, 128]\n        \n        # Global average pooling\n        v_pooled = v_fused.mean(dim=1)  # [B, 128]\n        t_pooled = t_fused.mean(dim=1)  # [B, 128]\n        \n        # Concatenate and classify\n        fused = torch.cat([v_pooled, t_pooled], dim=-1)  # [B, 256]\n        output = self.classifier(fused)  # [B, 4]\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.25,
+      "flops": 1188384,
+      "params": 312920,
+      "reward": 0.7187258,
+      "error_message": null,
+      "time_taken": 289.10513639450073
+    },
+    {
+      "iteration": 9,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        \n        # Hardcoded dimensions from API specification\n        visual_dim = 1024  # visual: [B, 256, 1024]\n        text_dim = 768     # text: [B, 77, 768]\n        \n        hidden_dim = 256\n        \n        # Project pooled features\n        self.visual_proj = nn.Linear(visual_dim, hidden_dim)\n        self.text_proj = nn.Linear(text_dim, hidden_dim)\n        \n        # Gating mechanism\n        self.gate = nn.Sequential(\n            nn.Linear(hidden_dim * 2, hidden_dim),\n            nn.Sigmoid()\n        )\n        \n        # Fusion layers\n        self.fusion = nn.Sequential(\n            nn.Linear(hidden_dim * 4, hidden_dim),\n            nn.GELU(),\n            nn.Dropout(0.1),\n            nn.Linear(hidden_dim, hidden_dim // 2),\n            nn.GELU()\n        )\n        \n        # Classifier\n        self.classifier = nn.Linear(hidden_dim // 2, 4)\n        \n    def forward(self, visual, text):\n        # Pool sequence dimension\n        v_pooled = visual.mean(dim=1)  # [B, 1024]\n        t_pooled = text.mean(dim=1)    # [B, 768]\n        \n        # Project to common dimension\n        v = self.visual_proj(v_pooled)  # [B, 256]\n        t = self.text_proj(t_pooled)    # [B, 256]\n        \n        # Gating\n        concat = torch.cat([v, t], dim=-1)\n        gate = self.gate(concat)  # [B, 256]\n        \n        # Multiple fusion strategies\n        v_gated = v * gate\n        t_gated = t * (1 - gate)\n        element_wise = v * t\n        diff = v - t\n        \n        # Concatenate all fusion results\n        fused = torch.cat([v_gated, t_gated, element_wise, diff], dim=-1)  # [B, 1024]\n        fused = self.fusion(fused)  # [B, 128]\n        \n        # Classify\n        out = self.classifier(fused)  # [B, 4]\n        \n        return out",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.359375,
+      "flops": 1770528,
+      "params": 886424,
+      "reward": 0.81067968,
+      "error_message": null,
+      "time_taken": 325.3251509666443
+    },
+    {
+      "iteration": 10,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        \n        # Fixed dimensions from API contract\n        d = 128\n        \n        # Project after pooling\n        self.v_proj = nn.Linear(1024, d)\n        self.t_proj = nn.Linear(768, d)\n        \n        self.v_ln = nn.LayerNorm(d)\n        self.t_ln = nn.LayerNorm(d)\n        \n        # Cross-modal gating\n        self.v_gate = nn.Linear(d, d)\n        self.t_gate = nn.Linear(d, d)\n        \n        # Classifier\n        self.classifier = nn.Sequential(\n            nn.Linear(d * 2, d),\n            nn.ReLU(),\n            nn.Dropout(0.3),\n            nn.Linear(d, 4)\n        )\n    \n    def forward(self, visual, text):\n        # visual: [B, 256, 1024] -> pool -> [B, 1024]\n        # text: [B, 77, 768] -> pool -> [B, 768]\n        \n        v = visual.mean(dim=1)\n        t = text.mean(dim=1)\n        \n        v = F.relu(self.v_ln(self.v_proj(v)))\n        t = F.relu(self.t_ln(self.t_proj(t)))\n        \n        # Cross-modal gating\n        v_gate = torch.sigmoid(self.v_gate(t))\n        t_gate = torch.sigmoid(self.t_gate(v))\n        \n        v_gated = v * v_gate\n        t_gated = t * t_gate\n        \n        fused = torch.cat([v_gated, t_gated], dim=-1)\n        return self.classifier(fused)",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.1875,
+      "flops": 590880,
+      "params": 296600,
+      "reward": 0.671245,
+      "error_message": null,
+      "time_taken": 160.91776299476624
+    }
+  ],
+  "best_result": {
+    "iteration": 5,
+    "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        # Dimensions from API contract\n        # visual: [B, 256, 1024] -> feature dim 1024\n        # text: [B, 77, 768] -> feature dim 768\n        visual_dim = 1024\n        text_dim = 768\n        \n        hidden_dim = 256\n        \n        # Project to common dimension\n        self.visual_proj = nn.Linear(visual_dim, hidden_dim)\n        self.text_proj = nn.Linear(text_dim, hidden_dim)\n        \n        # Feature-wise gating mechanism\n        self.gate = nn.Linear(hidden_dim * 2, hidden_dim)\n        \n        # Low-rank bilinear fusion\n        self.bilinear_v = nn.Linear(hidden_dim, 64, bias=False)\n        self.bilinear_t = nn.Linear(hidden_dim, 64, bias=False)\n        \n        # Final classifier\n        self.classifier = nn.Sequential(\n            nn.Linear(hidden_dim + 64, 64),\n            nn.ReLU(),\n            nn.Dropout(0.2),\n            nn.Linear(64, 4)\n        )\n        \n    def forward(self, visual, text):\n        # Mean pooling over sequence dimension\n        visual_pooled = visual.mean(dim=1)  # [B, 1024]\n        text_pooled = text.mean(dim=1)  # [B, 768]\n        \n        # Project to common dimension\n        visual_feat = F.relu(self.visual_proj(visual_pooled))  # [B, 256]\n        text_feat = F.relu(self.text_proj(text_pooled))  # [B, 256]\n        \n        # Gating fusion\n        concat = torch.cat([visual_feat, text_feat], dim=-1)  # [B, 512]\n        gate = torch.sigmoid(self.gate(concat))  # [B, 256]\n        gated = gate * visual_feat + (1 - gate) * text_feat  # [B, 256]\n        \n        # Low-rank bilinear fusion\n        bilinear = self.bilinear_v(visual_feat) * self.bilinear_t(text_feat)  # [B, 64]\n        \n        # Combine gated and bilinear features\n        fused = torch.cat([gated, bilinear], dim=-1)  # [B, 320]\n        \n        output = self.classifier(fused)  # [B, 4]\n        \n        return output",
+    "compile_success": true,
+    "compile_attempts": 2,
+    "accuracy": 0.390625,
+    "flops": 1286688,
+    "params": 644184,
+    "reward": 0.85523688,
+    "error_message": null,
+    "time_taken": 339.38856267929077
+  },
+  "api_contract": {
+    "version": "1.0",
+    "input_specs": {
+      "visual": {
+        "name": "visual",
+        "shape": [
+          "B",
+          256,
+          1024
+        ],
+        "dtype": "float32",
+        "description": "Visual features from frozen clip-vit-l-14",
+        "source": "image"
+      },
+      "text": {
+        "name": "text",
+        "shape": [
+          "B",
+          77,
+          768
+        ],
+        "dtype": "float32",
+        "description": "Text features from frozen clip-text-l",
+        "source": "text"
+      }
+    },
+    "output_spec": {
+      "name": "output",
+      "shape": [
+        "B",
+        4
+      ],
+      "dtype": "float32",
+      "description": "Model output logits",
+      "source": "prediction"
+    },
+    "constraints": {
+      "max_flops": 10000000,
+      "max_params": 50000000,
+      "target_accuracy": 0.45
+    }
+  }
+}

@@ -1,0 +1,299 @@
+{
+  "iteration": 20,
+  "history": [
+    {
+      "iteration": 1,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.Linear(512, 256)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.ReLU(),\n            nn.Linear(512, 256)\n        )\n        self.attention = nn.MultiheadAttention(256, 8, batch_first=True)\n        self.fusion = nn.Sequential(\n            nn.Linear(256*2, 256),\n            nn.ReLU(),\n            nn.Linear(256, 128),\n            nn.ReLU(),\n            nn.Linear(128, 13)\n        )\n        \n    def forward(self, visual, text):\n        # Process visual features\n        visual = self.visual_proj(visual)  # [B, 256, 256]\n        \n        # Process text features\n        text = torch.mean(text, dim=1)  # [B, 768]\n        text = self.text_proj(text).unsqueeze(1)  # [B, 1, 256]\n        \n        # Cross-attention\n        attended, _ = self.attention(visual, text, text)\n        attended = torch.mean(attended, dim=1)  # [B, 256]\n        \n        # Combine features\n        text_feat = text.squeeze(1)  # [B, 256]\n        combined = torch.cat([attended, text_feat], dim=1)  # [B, 512]\n        \n        # Final projection\n        output = self.fusion(combined)  # [B, 13]\n        return output",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.3125,
+      "flops": 3487502,
+      "params": 1611639,
+      "reward": 0.7172542550000001,
+      "error_message": null,
+      "time_taken": 116.61737012863159
+    },
+    {
+      "iteration": 2,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Linear(1024, 512)\n        self.text_proj = nn.Linear(768, 512)\n        \n        self.attention = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 1),\n            nn.Softmax(dim=1)\n        )\n        \n        self.fusion = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project visual features\n        visual_proj = self.visual_proj(visual)  # [B, 256, 512]\n        \n        # Project text features\n        text_proj = self.text_proj(text)  # [B, 77, 512]\n        \n        # Average pool text features\n        text_pool = text_proj.mean(dim=1)  # [B, 512]\n        \n        # Attention over visual features\n        attn_weights = self.attention(visual_proj)  # [B, 256, 1]\n        visual_pool = torch.sum(visual_proj * attn_weights, dim=1)  # [B, 512]\n        \n        # Element-wise fusion\n        fused = visual_pool * text_pool  # [B, 512]\n        return self.fusion(fused)",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.28125,
+      "flops": 2369038,
+      "params": 1186168,
+      "reward": 0.71609321,
+      "error_message": null,
+      "time_taken": 112.04042530059814
+    },
+    {
+      "iteration": 3,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Linear(1024, 512)\n        self.text_proj = nn.Linear(768, 512)\n        \n        self.cross_attn = nn.MultiheadAttention(512, 8, batch_first=True)\n        self.attn_norm = nn.LayerNorm(512)\n        \n        self.gate = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.Sigmoid()\n        )\n        \n        self.mlp = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities to common dimension\n        visual_proj = self.visual_proj(visual)  # [B, 256, 512]\n        text_proj = self.text_proj(text)  # [B, 77, 512]\n        \n        # Cross-modal attention\n        attended, _ = self.cross_attn(\n            query=visual_proj,\n            key=text_proj,\n            value=text_proj\n        )\n        attended = self.attn_norm(attended + visual_proj)\n        \n        # Feature-wise gating\n        gate = self.gate(visual.mean(dim=1, keepdim=True))  # [B, 1, 512]\n        gated = attended * gate\n        \n        # Pool and predict\n        pooled = gated.mean(dim=1)  # [B, 512]\n        output = self.mlp(pooled)  # [B, 13]\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.40625,
+      "flops": 4342798,
+      "params": 2631031,
+      "reward": 0.784524895,
+      "error_message": null,
+      "time_taken": 96.6485161781311
+    },
+    {
+      "iteration": 4,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.LayerNorm(512)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.ReLU(),\n            nn.LayerNorm(512)\n        )\n        \n        self.cross_attn = nn.MultiheadAttention(512, 8, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(512*2, 512),\n            nn.Sigmoid()\n        )\n        \n        self.final_proj = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities to same dimension\n        visual = self.visual_proj(visual)  # [B, 256, 512]\n        text = self.text_proj(text)  # [B, 77, 512]\n        \n        # Cross-modal attention\n        attended_visual, _ = self.cross_attn(\n            query=visual,\n            key=text,\n            value=text\n        )\n        \n        # Feature-wise gating\n        combined = torch.cat([visual, attended_visual], dim=-1)\n        gate_values = self.gate(combined)\n        fused = gate_values * visual + (1 - gate_values) * attended_visual\n        \n        # Pool and project to output\n        pooled = fused.mean(dim=1)  # [B, 512]\n        output = self.final_proj(pooled)  # [B, 13]\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.28125,
+      "flops": 4342798,
+      "params": 2632055,
+      "reward": 0.659519775,
+      "error_message": null,
+      "time_taken": 94.96538615226746
+    },
+    {
+      "iteration": 5,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):  # Make input_dims optional\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU()\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.ReLU()\n        )\n        \n        self.fusion = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Process visual features (B, 256, 1024) -> (B, 1024)\n        visual = visual.mean(dim=1)\n        \n        # Process text features (B, 77, 768) -> (B, 768)\n        text = text.mean(dim=1)\n        \n        # Project to common space\n        visual_proj = self.visual_proj(visual)  # [B, 512]\n        text_proj = self.text_proj(text)  # [B, 512]\n        \n        # Combine features\n        combined = torch.cat([visual_proj, text_proj], dim=1)  # [B, 1024]\n        output = self.fusion(combined)  # [B, 13]\n        return output",
+      "compile_success": true,
+      "compile_attempts": 4,
+      "accuracy": 0.28125,
+      "flops": 3154958,
+      "params": 1579383,
+      "reward": 0.694479135,
+      "error_message": null,
+      "time_taken": 128.67752742767334
+    },
+    {
+      "iteration": 6,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Conv1d(256, 128, kernel_size=1),\n            nn.ReLU(),\n            nn.Dropout(0.1)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 128),\n            nn.ReLU(),\n            nn.Dropout(0.1)\n        )\n        self.adaptive_pool = nn.AdaptiveAvgPool1d(1)\n        self.cross_attn = nn.MultiheadAttention(embed_dim=128, num_heads=4)\n        self.fusion = nn.Sequential(\n            nn.Linear(256, 128),\n            nn.ReLU(),\n            nn.Linear(128, 13)\n        )\n\n    def forward(self, visual, text):\n        # Process visual features\n        visual = self.visual_proj(visual)  # [B, 128, 1024]\n        visual = self.adaptive_pool(visual)  # [B, 128, 1]\n        visual = visual.squeeze(-1)  # [B, 128]\n        \n        # Process text features\n        text = text.mean(dim=1)  # [B, 768]\n        text = self.text_proj(text)  # [B, 128]\n        \n        # Concatenate and fuse\n        fused = torch.cat([visual, text], dim=-1)  # [B, 256]\n        output = self.fusion(fused)  # [B, 13]\n        return output",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.40625,
+      "flops": 964366,
+      "params": 233335,
+      "reward": 0.880974175,
+      "error_message": null,
+      "time_taken": 119.63500547409058
+    },
+    {
+      "iteration": 7,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.Linear(512, 256)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.ReLU(),\n            nn.Linear(512, 256)\n        )\n        \n        self.cross_attn = nn.MultiheadAttention(256, 8, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(256, 256),\n            nn.Sigmoid()\n        )\n        \n        self.final_proj = nn.Sequential(\n            nn.Linear(256, 128),\n            nn.ReLU(),\n            nn.Linear(128, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities to common dimension\n        visual = self.visual_proj(visual)  # [B, 256, 256]\n        text = self.text_proj(text)  # [B, 77, 256]\n        \n        # Cross-modal attention\n        attended, _ = self.cross_attn(\n            query=visual,\n            key=text,\n            value=text\n        )\n        \n        # Feature gating\n        gate = self.gate(attended)\n        fused = attended * gate\n        \n        # Pool and project to output\n        pooled = torch.mean(fused, dim=1)  # [B, 256]\n        output = self.final_proj(pooled)  # [B, 13]\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.328125,
+      "flops": 3356430,
+      "params": 1546103,
+      "reward": 0.736483735,
+      "error_message": null,
+      "time_taken": 94.34776973724365
+    },
+    {
+      "iteration": 8,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.LayerNorm(512)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.ReLU(),\n            nn.LayerNorm(512)\n        )\n        \n        self.cross_attention = nn.MultiheadAttention(512, num_heads=4, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.Sigmoid()\n        )\n        \n        self.fusion_mlp = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities to common dimension\n        visual_proj = self.visual_proj(visual)  # [B, 256, 512]\n        text_proj = self.text_proj(text)  # [B, 77, 512]\n        \n        # Cross-modal attention\n        attended_features, _ = self.cross_attention(\n            query=visual_proj,\n            key=text_proj,\n            value=text_proj\n        )\n        \n        # Gated fusion\n        combined = torch.cat([visual_proj, attended_features], dim=-1)\n        gate_values = self.gate(combined)\n        fused = gate_values * visual_proj + (1 - gate_values) * attended_features\n        \n        # Aggregate and predict\n        pooled = torch.mean(fused, dim=1)  # [B, 512]\n        output = self.fusion_mlp(pooled)  # [B, 13]\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.328125,
+      "flops": 4342798,
+      "params": 2632055,
+      "reward": 0.706394775,
+      "error_message": null,
+      "time_taken": 96.6291708946228
+    },
+    {
+      "iteration": 9,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.Linear(512, 256)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.ReLU(),\n            nn.Linear(512, 256)\n        )\n        \n        self.cross_attn = nn.MultiheadAttention(256, 8, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(256, 256),\n            nn.Sigmoid()\n        )\n        \n        self.mlp = nn.Sequential(\n            nn.Linear(256, 128),\n            nn.ReLU(),\n            nn.Linear(128, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities to common dimension\n        visual = self.visual_proj(visual)  # [B, 256, 256]\n        text = self.text_proj(text)  # [B, 77, 256]\n        \n        # Cross-modal attention\n        attended, _ = self.cross_attn(visual, text, text)\n        \n        # Gated fusion\n        gate = self.gate(attended)\n        fused = gate * attended + (1 - gate) * visual\n        \n        # Pool and predict\n        pooled = fused.mean(dim=1)\n        output = self.mlp(pooled)\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.40625,
+      "flops": 3356430,
+      "params": 1546103,
+      "reward": 0.814608735,
+      "error_message": null,
+      "time_taken": 97.58924317359924
+    },
+    {
+      "iteration": 10,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.LayerNorm(512),\n            nn.GELU()\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.LayerNorm(512),\n            nn.GELU()\n        )\n        \n        self.cross_attn = nn.MultiheadAttention(512, 8, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(512, 1),\n            nn.Sigmoid()\n        )\n        \n        self.final_proj = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities to common dimension\n        visual = self.visual_proj(visual)  # [B, 256, 512]\n        text = self.text_proj(text)  # [B, 77, 512]\n        \n        # Cross-modal attention\n        attended, _ = self.cross_attn(visual, text, text)\n        \n        # Feature-wise gating\n        gate_values = self.gate(attended)\n        fused = gate_values * visual + (1 - gate_values) * attended\n        \n        # Pool and project\n        pooled = fused.mean(dim=1)\n        output = self.final_proj(pooled)\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.375,
+      "flops": 3295246,
+      "params": 2107768,
+      "reward": 0.78208001,
+      "error_message": null,
+      "time_taken": 97.16403841972351
+    },
+    {
+      "iteration": 11,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Conv1d(256, 128, kernel_size=1),\n            nn.ReLU(),\n            nn.Conv1d(128, 64, kernel_size=1)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 256),\n            nn.ReLU(),\n            nn.Linear(256, 64)\n        )\n        self.visual_adaptive_pool = nn.AdaptiveAvgPool1d(77)\n        self.cross_attention = nn.MultiheadAttention(64, num_heads=4, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(64, 64),\n            nn.Sigmoid()\n        )\n        self.final_proj = nn.Sequential(\n            nn.Linear(64, 32),\n            nn.ReLU(),\n            nn.Linear(32, 13)\n        )\n\n    def forward(self, visual, text):\n        # Process visual features\n        visual = self.visual_proj(visual)  # [B, 64, 1024]\n        visual = self.visual_adaptive_pool(visual)  # [B, 64, 77]\n        visual = visual.permute(0, 2, 1)  # [B, 77, 64]\n\n        # Process text features\n        text = self.text_proj(text)  # [B, 77, 64]\n\n        # Cross-modal attention\n        attended, _ = self.cross_attention(visual, text, text)\n        \n        # Gated fusion\n        gate = self.gate(attended.mean(dim=1))\n        fused = attended * gate.unsqueeze(1)\n        \n        # Final projection\n        output = self.final_proj(fused.mean(dim=1))\n        return output",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.46875,
+      "flops": 1113422,
+      "params": 279159,
+      "reward": 0.939518655,
+      "error_message": null,
+      "time_taken": 118.12268996238708
+    },
+    {
+      "iteration": 12,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Linear(1024, 512)\n        self.text_proj = nn.Linear(768, 512)\n        \n        self.visual_pool = nn.AdaptiveAvgPool1d(1)\n        self.text_pool = nn.AdaptiveAvgPool1d(1)\n        \n        self.fusion = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.Linear(512, 512)\n        )\n        \n        self.classifier = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project visual features\n        visual = visual.mean(1)  # [B, 1024]\n        visual = self.fusion(visual)  # [B, 512]\n        \n        # Project text features\n        text = text.mean(1)  # [B, 768]\n        text = self.text_proj(text)  # [B, 512]\n        \n        # Fuse features\n        fused = (visual + text) / 2\n        \n        # Classify\n        output = self.classifier(fused)\n        return output",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.375,
+      "flops": 3679246,
+      "params": 1842039,
+      "reward": 0.773808655,
+      "error_message": null,
+      "time_taken": 115.76039958000183
+    },
+    {
+      "iteration": 13,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.LayerNorm(512)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.ReLU(),\n            nn.LayerNorm(512)\n        )\n        \n        self.attention = nn.Sequential(\n            nn.Linear(512, 512),\n            nn.Softmax(dim=-1)\n        )\n        \n        self.fusion = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project inputs\n        visual = self.visual_proj(visual)  # [B, 256, 512]\n        text = self.text_proj(text)  # [B, 77, 512]\n        \n        # Average text features\n        text_avg = text.mean(dim=1, keepdim=True)  # [B, 1, 512]\n        \n        # Attention weights\n        attn_weights = self.attention(visual)  # [B, 256, 512]\n        attended = attn_weights * text_avg  # [B, 256, 512]\n        \n        # Combine and pool\n        combined = visual + attended  # [B, 256, 512]\n        pooled = combined.mean(dim=1)  # [B, 512]\n        \n        # Final projection\n        output = self.fusion(pooled)  # [B, 13]\n        return output",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.234375,
+      "flops": 2630670,
+      "params": 1319287,
+      "reward": 0.6620118150000001,
+      "error_message": null,
+      "time_taken": 120.06293964385986
+    },
+    {
+      "iteration": 14,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Conv1d(256, 128, 1),\n            nn.ReLU(),\n            nn.Conv1d(128, 64, 1)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 256),\n            nn.ReLU(),\n            nn.Linear(256, 64)\n        )\n        self.cross_attn = nn.MultiheadAttention(64, 4, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(64, 1),\n            nn.Sigmoid()\n        )\n        self.output_mlp = nn.Sequential(\n            nn.Linear(64, 32),\n            nn.ReLU(),\n            nn.Linear(32, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project visual features\n        visual = self.visual_proj(visual)  # [B, 64, 1024]\n        visual = visual.permute(0, 2, 1)   # [B, 1024, 64]\n        \n        # Project text features\n        text = self.text_proj(text)        # [B, 77, 64]\n        \n        # Cross-modal attention\n        attended, _ = self.cross_attn(visual, text, text)\n        \n        # Feature gating\n        gate = self.gate(attended)\n        gated_features = attended * gate\n        \n        # Pool and predict\n        pooled = gated_features.mean(dim=1)\n        output = self.output_mlp(pooled)\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.375,
+      "flops": 1105358,
+      "params": 275064,
+      "reward": 0.84599073,
+      "error_message": null,
+      "time_taken": 92.09880018234253
+    },
+    {
+      "iteration": 15,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Conv1d(256, 128, kernel_size=1),\n            nn.ReLU(),\n            nn.Dropout(0.1)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 128),\n            nn.ReLU(),\n            nn.Dropout(0.1)\n        )\n        self.adaptive_pool = nn.AdaptiveAvgPool1d(1)\n        self.cross_attention = nn.MultiheadAttention(embed_dim=128, num_heads=4)\n        self.gate = nn.Sequential(\n            nn.Linear(128, 128),\n            nn.Sigmoid()\n        )\n        self.final_proj = nn.Sequential(\n            nn.Linear(128, 64),\n            nn.ReLU(),\n            nn.Linear(64, 13)\n        )\n\n    def forward(self, visual, text):\n        # Process visual features\n        visual = self.visual_proj(visual)  # [B, 128, 1024]\n        visual = self.adaptive_pool(visual).squeeze(-1)  # [B, 128]\n        \n        # Process text features\n        text = text.mean(dim=1)  # [B, 768]\n        text = self.text_proj(text)  # [B, 128]\n        \n        # Cross-modal attention\n        visual = visual.unsqueeze(0)  # [1, B, 128]\n        text = text.unsqueeze(0)  # [1, B, 128]\n        attn_out, _ = self.cross_attention(visual, text, text)\n        attn_out = attn_out.squeeze(0)  # [B, 128]\n        \n        # Gated fusion\n        gate = self.gate(attn_out)\n        fused = gate * attn_out + (1 - gate) * text.squeeze(0)\n        \n        # Final projection\n        output = self.final_proj(fused)\n        return output",
+      "compile_success": true,
+      "compile_attempts": 2,
+      "accuracy": 0.484375,
+      "flops": 946318,
+      "params": 224375,
+      "reward": 0.959595175,
+      "error_message": null,
+      "time_taken": 108.51214671134949
+    },
+    {
+      "iteration": 16,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Linear(1024, 512)\n        self.text_proj = nn.Linear(768, 512)\n        \n        self.adaptive_pool = nn.AdaptiveAvgPool1d(1)\n        \n        self.fusion = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Process visual features\n        B = visual.shape[0]\n        visual_pooled = self.adaptive_pool(visual.transpose(1, 2)).squeeze(-1)\n        visual_proj = self.visual_proj(visual_pooled)\n        \n        # Process text features\n        text_pooled = self.adaptive_pool(text.transpose(1, 2)).squeeze(-1)\n        text_proj = self.text_proj(text_pooled)\n        \n        # Concatenate and fuse\n        fused = torch.cat([visual_proj, text_proj], dim=1)\n        output = self.fusion(fused)\n        return output",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.296875,
+      "flops": 3154958,
+      "params": 1579383,
+      "reward": 0.710104135,
+      "error_message": null,
+      "time_taken": 113.3400890827179
+    },
+    {
+      "iteration": 17,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.LayerNorm(512),\n            nn.GELU()\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 512),\n            nn.LayerNorm(512),\n            nn.GELU()\n        )\n        \n        self.cross_attn = nn.MultiheadAttention(512, num_heads=8, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.Sigmoid()\n        )\n        \n        self.final_proj = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities to common dimension\n        visual_proj = self.visual_proj(visual)  # [B, 256, 512]\n        text_proj = self.text_proj(text)  # [B, 77, 512]\n        \n        # Cross-modal attention\n        attn_out, _ = self.cross_attn(\n            query=visual_proj,\n            key=text_proj,\n            value=text_proj\n        )\n        \n        # Feature gating\n        combined = torch.cat([visual_proj, attn_out], dim=-1)\n        gate = self.gate(combined)\n        gated_features = gate * visual_proj + (1 - gate) * attn_out\n        \n        # Pool and predict\n        pooled = gated_features.mean(dim=1)\n        output = self.final_proj(pooled)\n        \n        return output",
+      "compile_success": true,
+      "compile_attempts": 1,
+      "accuracy": 0.21875,
+      "flops": 4342798,
+      "params": 2632055,
+      "reward": 0.597019775,
+      "error_message": null,
+      "time_taken": 94.41633200645447
+    },
+    {
+      "iteration": 18,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Linear(1024, 512)\n        self.text_proj = nn.Linear(768, 512)\n        \n        self.attention = nn.Sequential(\n            nn.Linear(1024, 512),\n            nn.ReLU(),\n            nn.Linear(512, 1)\n        )\n        \n        self.mlp = nn.Sequential(\n            nn.Linear(512, 256),\n            nn.ReLU(),\n            nn.Linear(256, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities\n        visual_proj = self.visual_proj(visual)  # [B, 256, 512]\n        text_proj = self.text_proj(text)  # [B, 77, 512]\n        \n        # Average pool text features\n        text_pooled = text_proj.mean(dim=1)  # [B, 512]\n        \n        # Compute attention weights\n        combined = torch.cat([visual_proj, text_pooled.unsqueeze(1).expand(-1, 256, -1)], dim=-1)\n        attn_weights = F.softmax(self.attention(combined), dim=1)  # [B, 256, 1]\n        \n        # Weighted visual features\n        attended_visual = (visual_proj * attn_weights).sum(dim=1)  # [B, 512]\n        \n        # Fuse with text\n        fused = attended_visual + text_pooled\n        \n        # Final projection\n        out = self.mlp(fused)\n        return out",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.34375,
+      "flops": 3155982,
+      "params": 1579896,
+      "reward": 0.75695097,
+      "error_message": null,
+      "time_taken": 111.7098982334137
+    },
+    {
+      "iteration": 19,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Conv1d(256, 128, kernel_size=1),\n            nn.ReLU(),\n            nn.AdaptiveAvgPool1d(77)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 128),\n            nn.ReLU()\n        )\n        self.cross_attention = nn.MultiheadAttention(embed_dim=128, num_heads=4)\n        self.final_mlp = nn.Sequential(\n            nn.Linear(128, 64),\n            nn.ReLU(),\n            nn.Linear(64, 13)\n        )\n\n    def forward(self, visual, text):\n        # Process visual features\n        visual = self.visual_proj(visual)  # [B, 128, 77]\n        visual = visual.permute(2, 0, 1)  # [77, B, 128]\n        \n        # Process text features\n        text = self.text_proj(text)  # [B, 77, 128]\n        text = text.permute(1, 0, 2)  # [77, B, 128]\n        \n        # Cross-modal attention\n        attended, _ = self.cross_attention(visual, text, text)\n        attended = attended.mean(dim=0)  # [B, 128]\n        \n        # Final projection\n        output = self.final_mlp(attended)\n        return output",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.3125,
+      "flops": 913550,
+      "params": 207863,
+      "reward": 0.788621935,
+      "error_message": null,
+      "time_taken": 118.09114789962769
+    },
+    {
+      "iteration": 20,
+      "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims=None):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Linear(1024, 256),\n            nn.ReLU()\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 256),\n            nn.ReLU()\n        )\n        self.cross_attn = nn.MultiheadAttention(256, 4, batch_first=True)\n        self.gate = nn.Sequential(\n            nn.Linear(256, 256),\n            nn.Sigmoid()\n        )\n        self.final_proj = nn.Sequential(\n            nn.Linear(256, 128),\n            nn.ReLU(),\n            nn.Linear(128, 13)\n        )\n\n    def forward(self, visual, text):\n        # Project both modalities to same dimension\n        B = visual.shape[0]\n        visual = self.visual_proj(visual)  # [B, 256, 256]\n        text = self.text_proj(text)  # [B, 77, 256]\n        \n        # Cross-modal attention with visual as query\n        visual_pooled = visual.mean(dim=1, keepdim=True)  # [B, 1, 256]\n        attended, _ = self.cross_attn(visual_pooled, text, text)  # [B, 1, 256]\n        \n        # Feature gating\n        gate = self.gate(attended.squeeze(1))  # [B, 256]\n        visual_pooled = visual.mean(dim=1)  # [B, 256]\n        fused = gate * visual_pooled  # [B, 256]\n        \n        # Final projection\n        out = self.final_proj(fused)  # [B, 13]\n        return out",
+      "compile_success": true,
+      "compile_attempts": 3,
+      "accuracy": 0.234375,
+      "flops": 1914638,
+      "params": 824183,
+      "reward": 0.6823881350000001,
+      "error_message": null,
+      "time_taken": 110.52829098701477
+    }
+  ],
+  "best_result": {
+    "iteration": 15,
+    "code": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass AutoFusionLayer(nn.Module):\n    def __init__(self, input_dims):\n        super().__init__()\n        self.visual_proj = nn.Sequential(\n            nn.Conv1d(256, 128, kernel_size=1),\n            nn.ReLU(),\n            nn.Dropout(0.1)\n        )\n        self.text_proj = nn.Sequential(\n            nn.Linear(768, 128),\n            nn.ReLU(),\n            nn.Dropout(0.1)\n        )\n        self.adaptive_pool = nn.AdaptiveAvgPool1d(1)\n        self.cross_attention = nn.MultiheadAttention(embed_dim=128, num_heads=4)\n        self.gate = nn.Sequential(\n            nn.Linear(128, 128),\n            nn.Sigmoid()\n        )\n        self.final_proj = nn.Sequential(\n            nn.Linear(128, 64),\n            nn.ReLU(),\n            nn.Linear(64, 13)\n        )\n\n    def forward(self, visual, text):\n        # Process visual features\n        visual = self.visual_proj(visual)  # [B, 128, 1024]\n        visual = self.adaptive_pool(visual).squeeze(-1)  # [B, 128]\n        \n        # Process text features\n        text = text.mean(dim=1)  # [B, 768]\n        text = self.text_proj(text)  # [B, 128]\n        \n        # Cross-modal attention\n        visual = visual.unsqueeze(0)  # [1, B, 128]\n        text = text.unsqueeze(0)  # [1, B, 128]\n        attn_out, _ = self.cross_attention(visual, text, text)\n        attn_out = attn_out.squeeze(0)  # [B, 128]\n        \n        # Gated fusion\n        gate = self.gate(attn_out)\n        fused = gate * attn_out + (1 - gate) * text.squeeze(0)\n        \n        # Final projection\n        output = self.final_proj(fused)\n        return output",
+    "compile_success": true,
+    "compile_attempts": 2,
+    "accuracy": 0.484375,
+    "flops": 946318,
+    "params": 224375,
+    "reward": 0.959595175,
+    "error_message": null,
+    "time_taken": 108.51214671134949
+  },
+  "api_contract": {
+    "version": "1.0",
+    "input_specs": {
+      "visual": {
+        "name": "visual",
+        "shape": [
+          "B",
+          256,
+          1024
+        ],
+        "dtype": "float32",
+        "description": "Visual features from frozen clip-vit-l-14",
+        "source": "image"
+      },
+      "text": {
+        "name": "text",
+        "shape": [
+          "B",
+          77,
+          768
+        ],
+        "dtype": "float32",
+        "description": "Text features from frozen clip-text-l",
+        "source": "text"
+      }
+    },
+    "output_spec": {
+      "name": "output",
+      "shape": [
+        "B",
+        13
+      ],
+      "dtype": "float32",
+      "description": "Model output logits",
+      "source": "prediction"
+    },
+    "constraints": {
+      "max_flops": 10000000,
+      "max_params": 50000000,
+      "target_accuracy": 0.45
+    }
+  }
+}
