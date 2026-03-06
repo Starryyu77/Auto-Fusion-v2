@@ -140,11 +140,16 @@ class ProxyEvaluator:
         # Try to infer from dataset
         sample = self.full_dataset[0]
         if "label" in sample:
-            # Count unique labels
-            labels = []
-            for i in range(min(len(self.full_dataset), 100)):
-                labels.append(self.full_dataset[i]["label"].item())
-            return len(set(labels))
+            # Count unique labels from all samples to ensure accuracy
+            labels = set()
+            for i in range(len(self.full_dataset)):
+                label_val = self.full_dataset[i]["label"].item()
+                labels.add(label_val)
+            num_classes = len(labels)
+            # Also check max label value to ensure we cover all classes
+            max_label = max(labels) if labels else 0
+            # num_classes should be at least max_label + 1 (for 0-indexed labels)
+            return max(num_classes, max_label + 1)
         return 2  # Default binary
 
     def _create_dataloaders(self) -> tuple:
@@ -153,9 +158,15 @@ class ProxyEvaluator:
         indices = list(range(len(self.full_dataset)))
         np.random.shuffle(indices)
 
+        # Get actual number of classes
+        num_classes = self._get_num_classes()
+
         # Use stratified sampling if possible
-        train_indices = indices[:self.num_shots * 4]  # 4 classes x 16 shots
-        val_indices = indices[self.num_shots * 4:self.num_shots * 4 + 64]
+        train_size = min(self.num_shots * num_classes, len(indices) // 2)
+        val_size = min(64, len(indices) // 4)
+
+        train_indices = indices[:train_size]
+        val_indices = indices[train_size:train_size + val_size]
 
         train_subset = Subset(self.full_dataset, train_indices)
         val_subset = Subset(self.full_dataset, val_indices)
@@ -205,6 +216,13 @@ class ProxyEvaluator:
                 # Forward
                 optimizer.zero_grad()
                 logits = model(visual=visual, text=text)
+
+                # Validate labels are in valid range [0, num_classes)
+                num_classes = logits.shape[-1]
+                if labels.min() < 0 or labels.max() >= num_classes:
+                    # Clamp labels to valid range
+                    labels = torch.clamp(labels, 0, num_classes - 1)
+
                 loss = criterion(logits, labels)
 
                 # Backward
