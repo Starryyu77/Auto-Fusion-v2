@@ -14,10 +14,10 @@
 | 1 | MMMU | Kimi-K2.5 | 0 | ✅ 完成 | 2026-03-04 15:58 | 2026-03-04 19:14 | **0.746** |
 | 2 | MMMU | Qwen-Max | 0 | ❌ 停止 | 2026-03-05 14:08 | 2026-03-05 16:30 | 0% 编译成功率 |
 | 3 | MMMU | DeepSeek-V3 | 0 | ✅ 完成 | 2026-03-05 16:31 | 2026-03-05 18:56 | **0.831** 🏆 |
-| 4 | MMMU | GLM-5 | 0 | 🔄 **已重启** | 2026-03-06 19:37 | - | **0.857** (历史最佳) |
-| 5 | VQA-RAD | Kimi-K2.5 | 1 | 🔄 **已重启** | 2026-03-06 19:37 | - | - |
-| 6 | VQA-RAD | DeepSeek-V3 | 2 | 🔄 **已重启** | 2026-03-06 19:37 | - | - |
-| 7 | VQA-RAD | GLM-5 | 3 | 🔄 **已重启** | 2026-03-06 19:38 | - | - |
+| 4 | MMMU | GLM-5 | 0 | 🔄 **运行中** | 2026-03-06 19:37 | - | **0.641** (当前) |
+| 5 | VQA-RAD | Kimi-K2.5 | 1 | ⏹️ **已停止** | - | - | 等待代码修复 |
+| 6 | VQA-RAD | DeepSeek-V3 | 2 | ⏹️ **已停止** | - | - | 等待代码修复 |
+| 7 | VQA-RAD | GLM-5 | 3 | ⏹️ **已停止** | - | - | 等待代码修复 |
 | 8 | VQA-RAD | Qwen-Max | 1 | ❌ 跳过 | - | - | 编译成功率太低 |
 
 ---
@@ -115,22 +115,22 @@ Notes:
 GitHub Commit: d3eaba8
 ```
 
-#### 实验 #4: MMMU + GLM-5 🔄
+#### 实验 #4: MMMU + GLM-5 🔄 (第二轮运行)
 ```yaml
 Status: 🔄 运行中
-Start: 2026-03-05 23:29
+Start: 2026-03-06 19:37 (重启)
 End: -
 Duration: -
-Iterations: 3/200 (进行中)
-Best Reward: 0.824 (Iter 2)
-Best Accuracy: 35.94%
+Iterations: 2/200 (进行中)
+Best Reward: 0.641 (当前)
+Best Accuracy: 28.12%
 Compile Success Rate: 100%
 API Calls: ~
 Cost: ~
 Notes:
   - 100% 编译成功率
-  - Iter 2 即达到 0.824，接近 DeepSeek-V3 的 0.831
-  - FLOPs: 1.3M
+  - 历史最佳: 0.857 (第一轮，Iteration 57)
+  - FLOPs: 5.1M
   - 系统运行稳定
 ```
 
@@ -260,23 +260,49 @@ Notes:
 
 ---
 
+## Bug 修复记录 (2026-03-06)
+
+### 问题: VQA-RAD 实验 CUDA device-side assert 错误
+
+**症状**:
+- 所有 VQA-RAD 实验（#5, #6, #7）在 Iteration 1-2 时报错
+- 错误信息: `CUDA error: device-side assert triggered`
+- 根本原因是类别索引越界
+
+**根因分析**:
+1. `proxy_evaluator.py` 的 `_get_num_classes()` 只采样前 100 个样本，可能遗漏类别
+2. `_create_dataloaders()` 硬编码为 4 个类别，但 VQA-RAD 有 13 个类别
+3. 训练时标签索引超出输出维度，触发 CUDA assert
+
+**修复内容** (`src/evaluator/proxy_evaluator.py`):
+1. ✅ `_get_num_classes()`: 扫描所有样本，正确处理 max label value
+2. ✅ `_create_dataloaders()`: 使用实际的 num_classes 而非硬编码 4
+3. ✅ `_train_model()`: 添加标签验证和 clamping，防止索引越界
+
+**GitHub Commit**: `5df20bd`
+
+**状态**: ✅ 已修复，VQA-RAD 实验待重新启动
+
+---
+
 ## 实验重启记录 (2026-03-06)
 
 ### 重启原因
 阿里云账户已充值，恢复 API 调用。
 
 ### 重启状态
-| 实验 | 场景 | 模型 | 重启时间 | 状态 |
-|-----|------|------|----------|------|
-| #4 | MMMU | GLM-5 | 2026-03-06 19:37 | 🔄 运行中 (Iteration 1/200) |
-| #5 | VQA-RAD | Kimi-K2.5 | 2026-03-06 19:37 | 🔄 运行中 (Iteration 1/200) |
-| #6 | VQA-RAD | DeepSeek-V3 | 2026-03-06 19:37 | 🔄 运行中 (Iteration 1/200) |
-| #7 | VQA-RAD | GLM-5 | 2026-03-06 19:38 | 🔄 运行中 (Iteration 1/200) |
+| 实验 | 场景 | 模型 | 重启时间 | 状态 | 备注 |
+|-----|------|------|----------|------|------|
+| #4 | MMMU | GLM-5 | 2026-03-06 19:37 | 🔄 运行中 | Iteration 2/200, Reward 0.641 |
+| #5 | VQA-RAD | Kimi-K2.5 | - | ⏹️ 已停止 | 等待代码修复后重启 |
+| #6 | VQA-RAD | DeepSeek-V3 | - | ⏹️ 已停止 | 等待代码修复后重启 |
+| #7 | VQA-RAD | GLM-5 | - | ⏹️ 已停止 | 等待代码修复后重启 |
 
 **备注**:
-- 实验 #4 之前达到 **Reward 0.857** (历史最佳)，因账户欠费停止在 Iteration 57
-- 所有实验重新开始，使用新的输出目录
-- GPU 0-3 全部分配，4 个实验并行运行
+- 实验 #4 正在正常运行（GLM-5 MMMU）
+- VQA-RAD 实验因 CUDA 错误已停止，代码已修复
+- 修复内容见上方 "Bug 修复记录"
+- GPU 1-3 现已空闲，待 VQA-RAD 实验重启
 
 ---
 
